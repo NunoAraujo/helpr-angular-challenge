@@ -1,68 +1,92 @@
 let app = angular.module('app', []);
 
-app.run(($rootScope, TaskService) => {
-  $rootScope.tasks = TaskService.getTasks();
+app.run((TasksService) => {
+	TasksService.loadTasks();
 });
 
-app.factory('TaskService', ($http) => {
-  return {
-    getTasks() {
-      return [
-        {
-          "id": 0,
-          "title": "Go to work",
-          "priority": 1
-        },
-        {
-          "id": 1,
-          "title": "Go to the gym",
-          "priority": 2
-        },
-        {
-          "id": 3,
-          "title": "Go to the store",
-          "priority": 3
-        }
-      ]
-    }
-  };
+app.factory('TaskFactory', () => {
+	return function(data) {
+		this.id = typeof data.id === 'undefined' ? 0 : data.id;
+		this.title = typeof data.title === 'undefined' ? '' : data.title;
+		
+		if (typeof data.priority === 'undefined') {
+			this.priority = "Normal";
+		} else if (data.priority == 1) {
+			this.priority = "High";
+		} else if (data.priority == 2) {
+			this.priority = "Normal";
+		} else if (data.priority == 3) {
+			this.priority = "Low";
+		}
+	};
 });
 
-app.controller('AppCtrl', ($scope) => {
-  $scope.setPriority = (tasks) => {
-    for (let i = 0; i < tasks.length; i++) {
-      if (tasks[i].priority == 1) {
-        tasks[i].priority = "High";
-      } else if (tasks[i].priority == 2) {
-        tasks[i].priority = "Normal";
-      } else if (tasks[i].priority == 3) {
-        tasks[i].priority = "Low";
-      }
-    }
-    return tasks;
-  };
+app.service('TasksService', function($http, TaskFactory) {
+	this.tasks = [];
+
+	let data = [
+		{
+			"id": 0,
+			"title": "Go to work",
+			"priority": 1
+		},
+		{
+			"id": 1,
+			"title": "Go to the gym",
+			"priority": 2
+		},
+		{
+			"id": 3,
+			"title": "Go to the store",
+			"priority": 3
+		}
+	];
+
+	this.loadTasks = () => {
+		for (let i = 0; i < data.length; i++) {
+			this.tasks.push(new TaskFactory(data[i]));
+		}
+	}
+
+	this.remove = (task) => {
+		for (let i = 0; i < this.tasks.length ; i++) {
+			if (task.id == this.tasks[i].id) {
+				this.tasks.splice(i, 1);
+				return;
+			}
+		}
+	};
+
+	this.add = (data) => {
+		if (typeof data.id === 'undefined') data.id = this.tasks.length;
+		this.tasks.push(new TaskFactory(data));
+	};
+
+	this.clear = () => {
+		this.tasks = [];
+	};
 });
 
-app.controller('TasksCtrl', (TaskService, $rootScope, $scope) => {
-  $scope.remove = (task) => {
-    for (let i = 0; i < $rootScope.tasks.length ; i++) {
-      if (task.id == $rootScope.tasks[i].id) {
-        $rootScope.tasks.pop(i);
-        return;
-      }
-    }
-  };
+app.controller('AppCtrl', ($scope, TasksService) => {
+	$scope.tasks = TasksService.tasks;
+});
 
-  $scope.add = () => {
-    $rootScope.tasks.push({title: $scope.task.title, priority: $scope.task.priority || "Normal"});
-    $scope.setPriority($rootScope.tasks);
-    $scope.task = {};
-  };
+app.controller('TasksCtrl', (TasksService, $scope) => {
+	$scope.task = {};
+
+	$scope.remove = (task) => {
+		TasksService.remove(task);
+	};
+
+	$scope.add = () => {
+		TasksService.add($scope.task);
+		$scope.task = {};
+	};
 
 });
 
-app.controller('ToolsCtrl', (TaskService, $rootScope, $scope) => {
-  $scope.clear = () => {
-    $rootScope.tasks = [];
-  };
+app.controller('ToolsCtrl', (TasksService, $scope) => {
+	$scope.clear = () => {
+		TasksService.clear();
+	};
 });
